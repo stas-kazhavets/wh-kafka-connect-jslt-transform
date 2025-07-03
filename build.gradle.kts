@@ -32,7 +32,7 @@ val includeInJar by configurations.creating {
 }
 
 dependencies {
-    val kafkaConnectVersion = "3.9.+"
+    val kafkaConnectVersion = "3.7.+"
     val jsltLibVersion = "0.1.14"
     val junitVersion = "5.8.2"
 

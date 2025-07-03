@@ -50,6 +50,7 @@ abstract class JsltTransform<R : ConnectRecord<R>?> : Transformation<R> {
     }
 
     private val jsonConverter: JsonConverter = JsonConverter()
+    private val schemalessJsonConverter: JsonConverter = JsonConverter()
     private val objectMapper = ObjectMapper()
 
     private lateinit var jslt: String
@@ -61,23 +62,25 @@ abstract class JsltTransform<R : ConnectRecord<R>?> : Transformation<R> {
         jslt = config.getString(JSLT_CONFIG)
         jsltExpression = Parser.compileString(jslt)
         forceApplySchemaless = config.getBoolean(JSLT_SCHEMALESS_CONFIG)
+        jsonConverter.configure(singletonMap("schemas.enable", true), isKeyConverter())
+        schemalessJsonConverter.configure(singletonMap("schemas.enable", false), isKeyConverter())
     }
 
     override fun apply(record: R): R {
-        val (configMap, isKeyFlag) = getJsonConverterConfig(record)
-        jsonConverter.configure(configMap, isKeyFlag)
+        val converter = if (record?.keySchema() != null) jsonConverter else schemalessJsonConverter
+
         return when {
             operatingValue(record) == null -> {
                 record
             }
             operatingSchema(record) != null && forceApplySchemaless -> {
-                applyFromSchemaToSchemalessOutput(record)
+                applyFromSchemaToSchemalessOutput(record, converter)
             }
             operatingSchema(record) == null -> {
                 applySchemaless(record)
             }
             else -> {
-                applyWithSchema(record)
+                applyWithSchema(record, converter)
             }
         }
     }
@@ -96,8 +99,7 @@ abstract class JsltTransform<R : ConnectRecord<R>?> : Transformation<R> {
 
     protected abstract fun newRecord(record: R?, updatedSchema: Schema?, updatedValue: Any?): R
 
-    protected abstract fun getJsonConverterConfig(record: R?): Pair<Map<String, Any>, Boolean>
-
+    protected abstract fun isKeyConverter(): Boolean
 
     private fun applySchemaless(record: R): R {
         val value = Requirements.requireMap(operatingValue(record), PURPOSE)
@@ -106,24 +108,24 @@ abstract class JsltTransform<R : ConnectRecord<R>?> : Transformation<R> {
         return newRecord(record, null, outputValue)
     }
 
-    private fun applyFromSchemaToSchemalessOutput(record: R): R {
+    private fun applyFromSchemaToSchemalessOutput(record: R, converter: JsonConverter): R {
         val value = Requirements.requireStruct(operatingValue(record), PURPOSE)
         val schema = operatingSchema(record)
         val topic = record?.topic()
 
-        val valueAsJsonBytes = jsonConverter.fromConnectData(topic, schema, value)
+        val valueAsJsonBytes = converter.fromConnectData(topic, schema, value)
         val inputValueJsonNode = objectMapper.readTree(valueAsJsonBytes)
         val outputValue = jsltExpression.apply(inputValueJsonNode).toString()
         return newRecord(record, null, outputValue)
     }
 
 
-    private fun applyWithSchema(record: R): R {
+    private fun applyWithSchema(record: R, converter: JsonConverter): R {
         val value = Requirements.requireStruct(operatingValue(record), PURPOSE)
         val schema = operatingSchema(record)
         val topic = record?.topic()
 
-        val valueAsJsonBytes = jsonConverter.fromConnectData(topic, schema, value)
+        val valueAsJsonBytes = converter.fromConnectData(topic, schema, value)
         val inputValueJsonNode = objectMapper.readTree(valueAsJsonBytes)
         val outputValue = convert(inputValueJsonNode)
         return newRecord(record, outputValue?.schema(), outputValue)
@@ -262,8 +264,7 @@ abstract class JsltTransform<R : ConnectRecord<R>?> : Transformation<R> {
 
 
     class Key<R : ConnectRecord<R>?> : JsltTransform<R>() {
-        override fun getJsonConverterConfig(record: R?): Pair<Map<String, Any>, Boolean> =
-            Pair(singletonMap("schemas.enable", record?.keySchema() != null), true)
+        override fun isKeyConverter(): Boolean = true
 
         override fun operatingSchema(record: R?): Schema? = record?.keySchema()
 
@@ -281,8 +282,7 @@ abstract class JsltTransform<R : ConnectRecord<R>?> : Transformation<R> {
     }
 
     class Value<R : ConnectRecord<R>?> : JsltTransform<R>() {
-        override fun getJsonConverterConfig(record: R?): Pair<Map<String, Any>, Boolean> =
-            Pair(singletonMap("schemas.enable", record?.keySchema() != null), false)
+        override fun isKeyConverter(): Boolean = false
 
         override fun operatingSchema(record: R?): Schema? = record?.valueSchema()
 
