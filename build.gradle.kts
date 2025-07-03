@@ -4,9 +4,9 @@
 
 
 group = "at.willhaben.kafka.connect.transforms.jslt"
-version = System.getenv("VERSION") ?: "1.2.0"
+version = System.getenv("VERSION") ?: "1.3.0"
 
-val javaVersion = 11
+val javaVersion = 21
 
 val artifactoryContext =
     project.properties.getOrDefault("artifactory_context", System.getenv("ARTIFACTORY_CONTEXT")).toString()
@@ -17,11 +17,10 @@ val artifactoryPassword =
 
 
 plugins {
-    kotlin("jvm") version "1.6.21"
+    kotlin("jvm") version "2.2.0"
     idea // Generates files that are used by IntelliJ IDEA, thus making it possible to open the project from IDEA
     `java-library` // Apply the java-library plugin for API and implementation separation.
     `maven-publish`
-    id("io.gitlab.arturbosch.detekt") version "1.20.0"
 }
 
 repositories {
@@ -33,8 +32,8 @@ val includeInJar by configurations.creating {
 }
 
 dependencies {
-    val kafkaConnectVersion = "3.2.+"
-    val jsltLibVersion = "0.1.12"
+    val kafkaConnectVersion = "3.9.+"
+    val jsltLibVersion = "0.1.14"
     val junitVersion = "5.8.2"
 
     compileOnly(platform("org.jetbrains.kotlin:kotlin-bom")) // Align versions of all Kotlin components
