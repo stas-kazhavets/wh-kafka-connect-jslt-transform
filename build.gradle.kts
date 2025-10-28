@@ -4,7 +4,7 @@
 
 
 group = "at.willhaben.kafka.connect.transforms.jslt"
-version = System.getenv("VERSION") ?: "1.3.0"
+version = System.getenv("VERSION") ?: "2.0.0"
 
 val javaVersion = 21
 
@@ -107,16 +107,6 @@ publishing {
             }
 
             from(components["java"])
-        }
-    }
-    repositories {
-        maven {
-            name = "ArtifactoryLocal"
-            url = uri(artifactoryContext + "/libs-release-local")
-            credentials {
-                username = artifactoryUsern
-                password = artifactoryPassword
-            }
         }
     }
 }

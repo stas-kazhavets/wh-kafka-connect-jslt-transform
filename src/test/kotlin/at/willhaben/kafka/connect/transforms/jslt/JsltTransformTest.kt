@@ -123,7 +123,8 @@ class JsltTransformTest {
             .put("arrayField", arrayOf("ElemA", "ElemB", "ElemC").toList())
             .put("bytes", "byteArray".toByteArray())
 
-        val actual: JsonNode = objectMapper.readValue(xformValue.apply(given).value() as String, JsonNode::class.java)
+        val actualValue = xformValue.apply(given).value() as Map<*, *>
+        val actual: JsonNode = objectMapper.valueToTree(actualValue)
         assertEquals(expected.getInt32("numberField"), actual.get("numberField").asInt())
         assertEquals(expected.getFloat32("floatField"), actual.get("floatField").asDouble().toFloat())
         assertEquals(expected.getString("stringField"), actual.get("stringField").asText())
@@ -164,8 +165,8 @@ class JsltTransformTest {
         val src = SourceRecord(null, null, "topic", null, key, null, null)
         val transformed: SourceRecord = xformKey.apply(src)
         assertTrue(transformed.keySchema() == null)
-        assertTrue(transformed.key() is String)
-        val actual: JsonNode = objectMapper.readValue(transformed.key() as String, JsonNode::class.java)
+        assertTrue(transformed.key() is Map<*, *>)
+        val actual: JsonNode = objectMapper.valueToTree(transformed.key())
         assertEquals(12, actual.get("A").get("B").asInt())
     }
 
@@ -662,8 +663,9 @@ class JsltTransformTest {
             )
 
         // when
-        val actual: String = xformValue.apply(SourceRecord(null, null, "someTopic", 0,
-            givenInputSchema, givenInputData)).value() as String
+        val actualMap = xformValue.apply(SourceRecord(null, null, "someTopic", 0,
+            givenInputSchema, givenInputData)).value() as Map<*, *>
+        val actual: String = objectMapper.writeValueAsString(actualMap)
 
         // then
         assertEquals("{\"nestedObject\":{\"legacyAttributes\":[{\"code\":\"CONTACT/URL\",\"values\":[]},{\"code\":\"VAN_MODEL/MODEL\",\"values\":[\"Sonstige\"]}]}}", actual)
