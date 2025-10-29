@@ -6,7 +6,7 @@
 group = "at.willhaben.kafka.connect.transforms.jslt"
 version = System.getenv("VERSION") ?: "2.0.0"
 
-val javaVersion = 21
+val javaVersion = 11
 
 val artifactoryContext =
     project.properties.getOrDefault("artifactory_context", System.getenv("ARTIFACTORY_CONTEXT")).toString()
